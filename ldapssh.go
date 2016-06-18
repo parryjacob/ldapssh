@@ -15,6 +15,7 @@ func main() {
 	uri := ""
 	base := ""
 	uid := os.Args[1]
+	filter := "(objectClass=posixAccount)"
 
 	conf, err := ioutil.ReadFile("/etc/nslcd.conf")
 	if err != nil {
@@ -23,28 +24,39 @@ func main() {
 	lines := strings.Split(string(conf), "\n")
 
 	for _, line := range lines {
-		words := strings.Split(line, " ")
-		if len(words) > 1 {
-			key := words[0]
+		fields := strings.Fields(line)
+		if len(fields) > 1 {
+			key := fields[0]
+			value := strings.Join(fields[1:], " ")
+			
 			if key == "uri" {
-				uri = words[1]
+				uri = value
 			} else if key == "base" {
-				base = words[1]
+				base = value
 			} else if key == "binddn" {
-				binddn = words[1]
+				binddn = value
 			} else if key == "bindpw" {
-				bindpw = words[1]
+				bindpw = value
+			}
+			
+			if len(fields) > 2 && key == "filter" {
+				key2 := fields[1]
+				value = strings.Join(fields[2:], " ")
+				
+				if key2 == "passwd" {
+					filter = value
+				}
 			}
 		}
 	}
 
-	ldapUrl, err := url.Parse(uri)
+	ldapURL, err := url.Parse(uri)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	ldapHost := ldapUrl.Host
+	ldapHost := ldapURL.Host
 	if !strings.Contains(ldapHost, ":") {
 		ldapHost += ":389"
 	}
@@ -64,7 +76,7 @@ func main() {
 		}
 	}
 
-	searchRequest := ldap.NewSearchRequest(base, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false, "(&(objectClass=posixAccount)(uid=" + uid + "))", []string{"sshPublicKey"}, nil)
+	searchRequest := ldap.NewSearchRequest(base, ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false, "(&" + filter + "(uid=" + uid + "))", []string{"sshPublicKey"}, nil)
 
 	s, err := ldapConn.Search(searchRequest)
 	if err != nil {
