@@ -7,6 +7,7 @@ import (
 	"strings"
 	"fmt"
 	"net/url"
+	"os/user"
 )
 
 func main() {
@@ -88,6 +89,19 @@ func main() {
 		keys := entry.GetAttributeValues("sshPublicKey")
 		for _, k := range keys {
 			fmt.Println(k)
+		}
+	}
+
+	// Attempt to get keys from ~/.ssh/authorized_keys
+	usr, err := user.Lookup(uid)
+	if usr != nil {
+		path := usr.HomeDir + "/.ssh/authorized_keys"
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			// the file exists, attempt to read it out
+			keys, err := ioutil.ReadFile(path)
+			if err != nil {
+				fmt.Println(string(keys))
+			}
 		}
 	}
 
